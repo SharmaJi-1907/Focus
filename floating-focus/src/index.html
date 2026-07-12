@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Floating Focus</title>
+<style>
+  :root {
+    --bg:#10141c; --card:#1d2432; --line:#242c3b; --ink:#e8e6df;
+    --dim:#8a93a5; --accent:#f5b942; --danger:#e0654f; --ok:#7fc78a;
+    --btnink:#1a1408;
+  }
+  [data-theme="light"] {
+    --bg:#f6f4ee; --card:#ffffff; --line:#e0dbcd; --ink:#2e333a;
+    --dim:#8b919c; --accent:#b26f0e; --danger:#c0392b; --ok:#2e7d43;
+    --btnink:#ffffff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none;
+      -webkit-user-select:none; }
+  html,body { height:100%; }
+  body { background:var(--bg); color:var(--ink);
+         font-family:"Segoe UI","Noto Sans",system-ui,sans-serif;
+         overflow:hidden; display:flex; flex-direction:column;
+         transition:background .3s; }
+
+  /* ---------- top bar (native drag region) ---------- */
+  .bar { display:flex; align-items:center; padding:8px 10px 2px; gap:3px; }
+  .brand { flex:1; font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+           color:var(--dim); cursor:move; }
+  .wbtn { border:none; background:transparent; color:var(--dim); width:28px;
+          height:24px; border-radius:7px; cursor:pointer; font-size:13px;
+          display:grid; place-items:center; transition:.15s; }
+  .wbtn:hover { background:var(--line); color:var(--ink); }
+  .wbtn.close:hover { background:var(--danger); color:#fff; }
+  #pinBtn.on { color:var(--accent); background:var(--line); }
+
+  #miniTask { display:flex; justify-content:center; align-items:center; gap:7px;
+              padding:2px 12px 0; font-size:13px; color:var(--dim); min-height:22px; }
+  #miniTask .ic { font-size:16px; }
+  #miniTask .word { font-weight:600; }
+
+  #time { text-align:center; font-size:50px; font-weight:700; line-height:1.1;
+          font-variant-numeric:tabular-nums; color:var(--accent);
+          transition:color .3s; padding-top:2px; cursor:move; }
+  #time.flash { animation:flash .5s steps(1) infinite; }
+  @keyframes flash { 50% { color:var(--ok); } }
+  @media (prefers-reduced-motion: reduce){ #time.flash{ animation:none; color:var(--ok);} }
+
+  .ctrl { display:flex; justify-content:center; gap:10px; padding:10px 12px 12px; }
+  .big { border:none; border-radius:12px; padding:12px 0; font-size:15px;
+         font-weight:700; cursor:pointer; transition:.15s; flex:1; max-width:130px; }
+  .big:active { transform:scale(.96); }
+  #startBtn { background:var(--accent); color:var(--btnink); }
+  #startBtn:hover { filter:brightness(1.08); }
+  #resetBtn { background:transparent; color:var(--dim);
+              border:1.5px solid var(--line); }
+  #resetBtn:hover { color:var(--ink); border-color:var(--dim); }
+
+  /* ---------- expanded ---------- */
+  #full { display:none; flex:1; flex-direction:column; overflow:hidden;
+          padding:0 12px 12px; }
+  body.expanded #full { display:flex; }
+  .sect { font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+          color:var(--dim); margin:6px 0 6px; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  input[type=text],input[type=number] {
+    background:var(--card); border:1px solid var(--line); border-radius:8px;
+    color:var(--ink); padding:8px 10px; font-size:13px; outline:none;
+    transition:.15s; user-select:text; -webkit-user-select:text; }
+  input:focus { border-color:var(--accent); }
+  input[type=number] { width:60px; text-align:center; }
+  .unit { font-size:11px; color:var(--dim); }
+  .chipbtn { background:var(--card); border:1px solid var(--line); color:var(--ink);
+             border-radius:8px; padding:8px 14px; font-size:12px; font-weight:600;
+             cursor:pointer; transition:.15s; }
+  .chipbtn:hover { border-color:var(--accent); }
+
+  .picker { display:flex; gap:4px; flex-wrap:wrap; margin:6px 0; }
+  .ic-opt { width:30px; height:30px; border-radius:8px; border:1px solid var(--line);
+            background:var(--card); font-size:15px; cursor:pointer;
+            display:grid; place-items:center; transition:.15s; }
+  .ic-opt:hover { transform:scale(1.1); }
+  .ic-opt.on { border-color:var(--accent); box-shadow:0 0 0 1.5px var(--accent); }
+  .c-opt { width:20px; height:20px; border-radius:50%; cursor:pointer;
+           border:2px solid transparent; transition:.15s; }
+  .c-opt:hover { transform:scale(1.15); }
+  .c-opt.on { border-color:var(--ink); }
+
+  #list { flex:1; overflow-y:auto; margin-top:4px; }
+  #list::-webkit-scrollbar { width:5px; }
+  #list::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
+  .task { display:flex; align-items:center; gap:9px; background:var(--card);
+          border:1px solid var(--line); border-left:5px solid var(--tc);
+          border-radius:11px; padding:9px 10px; margin-bottom:7px; cursor:pointer;
+          transition:.15s; animation:pop .2s ease; }
+  @keyframes pop { from { opacity:0; transform:translateY(5px);} }
+  .task:hover { transform:translateX(2px); }
+  .task.sel { border-color:var(--tc); box-shadow:0 0 0 1px var(--tc); }
+  .task .ic { font-size:17px; }
+  .task .info { flex:1; overflow:hidden; }
+  .task .txt { font-size:13px; overflow:hidden; text-overflow:ellipsis;
+               white-space:nowrap; }
+  .task .sch { font-size:10px; color:var(--dim); }
+  .task.done .txt { text-decoration:line-through; color:var(--dim); }
+  .mini { border:none; background:transparent; color:var(--dim); cursor:pointer;
+          font-size:13px; padding:2px 6px; border-radius:5px; }
+  .mini:hover { background:var(--line); color:var(--ink); }
+  .empty { text-align:center; color:var(--dim); font-size:12px; padding:14px 8px;
+           border:1px dashed var(--line); border-radius:10px; }
+  .stats { font-size:11px; color:var(--dim); text-align:center; padding-top:6px; }
+  .stats b { color:var(--ok); }
+</style>
+</head>
+<body>
+
+  <!-- top bar: 📌 pin · ☾ theme · — minimize · ⤢ expand · ✕ close -->
+  <div class="bar" data-tauri-drag-region>
+    <span class="brand" data-tauri-drag-region>⋮⋮ focus</span>
+    <button class="wbtn on" id="pinBtn"  title="pin on top of every app">📌</button>
+    <button class="wbtn" id="themeBtn" title="day / night">☾</button>
+    <button class="wbtn" id="minBtn"   title="minimize">—</button>
+    <button class="wbtn" id="expBtn"   title="expand">⤢</button>
+    <button class="wbtn close" id="closeBtn" title="close">✕</button>
+  </div>
+
+  <div id="miniTask"><span class="ic">🎯</span><span class="word">no task</span></div>
+
+  <div id="time" title="drag to move · double-click to start/pause">00:25:00</div>
+
+  <div class="ctrl">
+    <button class="big" id="startBtn">▶ Start</button>
+    <button class="big" id="resetBtn">↺ Reset</button>
+  </div>
+
+  <div id="full">
+    <div class="sect">Set time</div>
+    <div class="row">
+      <input type="number" id="hrs" min="0" max="24" value="0"><span class="unit">hr</span>
+      <input type="number" id="mins" min="0" max="59" value="25"><span class="unit">min</span>
+      <button class="chipbtn" id="setBtn">Set timer</button>
+    </div>
+
+    <div class="sect">New task</div>
+    <div class="row">
+      <input type="text" id="taskInput" placeholder="Task name…" maxlength="60" style="flex:1;min-width:120px">
+    </div>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="schInput" placeholder="Schedule (optional) e.g. 6–7 pm" maxlength="30" style="flex:1;min-width:120px">
+      <button class="chipbtn" id="addBtn">+ Add</button>
+    </div>
+    <div class="picker" id="icons"></div>
+    <div class="picker" id="colors"></div>
+
+    <div class="sect">Your work</div>
+    <div id="list"></div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+<script>
+"use strict";
+const ICONS = ["🎯","📚","💻","✍️","🧠","🏋️","📝","⚡","🎨","🔬","📊","🎸"];
+const PAL_DARK  = ["#f5b942","#7fc78a","#6aa9f0","#e0654f","#c78af0","#3aa8a0"];
+const PAL_LIGHT = ["#b26f0e","#2e7d43","#2563b8","#c0392b","#7a3fb8","#1f7a73"];
+const MINI=[300,285], EXPANDED=[350,640];
+const $ = id => document.getElementById(id);
+const pal = () => state.theme==="light" ? PAL_LIGHT : PAL_DARK;
+
+/* ---------- Tauri window handle (falls back gracefully in a browser) ---------- */
+const T = window.__TAURI__ || null;
+const win = T ? T.window.getCurrentWindow() : null;
+
+/* ---------- state (saved locally, survives restarts) ---------- */
+let state = { tasks:[], active:null, h:0, m:25, theme:"dark", done:0, pinned:true };
+try { const s=localStorage.getItem("ff6"); if(s) state={...state,...JSON.parse(s)}; } catch(e){}
+state.tasks.forEach(t=>{ if(t.ci===undefined){ const i=PAL_DARK.indexOf(t.color); t.ci=i>=0?i:0; } });
+const save = () => { try{ localStorage.setItem("ff6", JSON.stringify(state)); }catch(e){} };
+
+/* ---------- drift-free timer ----------
+   The countdown is computed from an absolute end-timestamp instead of
+   decrementing a counter, so it never lags or drifts. */
+let total=state.h*3600+state.m*60, left=total, running=false, endAt=0, tick=null;
+const fmt=s=>[s/3600|0, s/60%60|0, s%60].map(n=>String(n).padStart(2,"0")).join(":");
+const paint=()=>{ $("time").textContent=fmt(left); };
+
+function startT(){
+  if(running || left<=0) return;
+  running=true; endAt=Date.now()+left*1000;
+  $("time").classList.remove("flash");
+  $("startBtn").textContent="⏸ Pause";
+  tick=setInterval(()=>{
+    left=Math.max(0, Math.round((endAt-Date.now())/1000));
+    if(left<=0){ stopT(); finish(); }
+    paint();
+  },250);
+}
+function stopT(){ running=false; clearInterval(tick); $("startBtn").textContent="▶ Start"; }
+function resetT(){ stopT(); $("time").classList.remove("flash"); left=total; paint(); }
+function clampSet(){
+  let h=Math.max(0,Math.min(24, +$("hrs").value|0));
+  let m=Math.max(0,Math.min(59, +$("mins").value|0));
+  if(h===0&&m===0) m=1;
+  if(h===24) m=0;
+  state.h=h; state.m=m; save();
+  $("hrs").value=h; $("mins").value=m;
+  total=h*3600+m*60; resetT();
+}
+function finish(){
+  $("time").classList.add("flash"); $("time").textContent="DONE!";
+  state.done++; save(); renderStats();
+  try{ const c=new (window.AudioContext||window.webkitAudioContext)();
+    [0,.4,.8].forEach(t=>{ const o=c.createOscillator(),g=c.createGain();
+      o.connect(g); g.connect(c.destination); o.frequency.value=740; g.gain.value=.06;
+      o.start(c.currentTime+t); o.stop(c.currentTime+t+.25); }); }catch(e){}
+}
+$("startBtn").onclick=()=>running?stopT():startT();
+$("time").addEventListener("dblclick",()=>running?stopT():startT());
+$("resetBtn").onclick=resetT;
+$("setBtn").onclick=clampSet;
+["hrs","mins"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") clampSet(); }));
+
+/* ---------- native window controls ---------- */
+/* Drag: the top bar uses data-tauri-drag-region (handled by the OS).
+   The big digits also start a native drag on mousedown. */
+$("time").addEventListener("mousedown", e=>{
+  if(e.buttons===1 && win) win.startDragging();
+});
+
+/* Pin: toggle always-on-top. On = hovers above every application. */
+async function applyPin(){
+  if(win) await win.setAlwaysOnTop(!!state.pinned);
+  $("pinBtn").classList.toggle("on", !!state.pinned);
+  $("pinBtn").title = state.pinned ? "pinned on top — click to unpin"
+                                   : "click to pin on top of every app";
+}
+$("pinBtn").onclick=()=>{ state.pinned=!state.pinned; save(); applyPin(); };
+
+$("closeBtn").onclick=()=> win ? win.close() : window.close();
+$("minBtn").onclick  =()=> win && win.minimize();
+
+let expanded=false;
+$("expBtn").onclick=async ()=>{
+  expanded=!expanded;
+  document.body.classList.toggle("expanded",expanded);
+  $("expBtn").textContent=expanded?"⤡":"⤢";
+  if(win){
+    const [w,h]=expanded?EXPANDED:MINI;
+    await win.setSize(new T.dpi.LogicalSize(w,h));
+  }
+};
+
+/* ---------- theme ---------- */
+function applyTheme(){
+  document.documentElement.dataset.theme = state.theme==="light"?"light":"";
+  $("themeBtn").textContent = state.theme==="light"?"☀":"☾";
+  buildColorPicker(); render();
+}
+$("themeBtn").onclick=()=>{ state.theme=state.theme==="light"?"dark":"light"; save(); applyTheme(); };
+
+/* ---------- pickers ---------- */
+let pickCi=0, pickIcon=ICONS[0];
+ICONS.forEach(ic=>{
+  const b=document.createElement("button"); b.className="ic-opt"; b.textContent=ic;
+  if(ic===pickIcon)b.classList.add("on");
+  b.onclick=()=>{ pickIcon=ic;
+    document.querySelectorAll(".ic-opt").forEach(x=>x.classList.toggle("on",x.textContent===ic)); };
+  $("icons").appendChild(b);
+});
+function buildColorPicker(){
+  const box=$("colors"); box.innerHTML="";
+  pal().forEach((c,i)=>{
+    const b=document.createElement("button"); b.className="c-opt"+(i===pickCi?" on":"");
+    b.style.background=c;
+    b.onclick=()=>{ pickCi=i; buildColorPicker(); };
+    box.appendChild(b);
+  });
+}
+
+/* ---------- tasks ---------- */
+function addTask(){
+  const t=$("taskInput").value.trim(); if(!t)return;
+  state.tasks.push({text:t, sch:$("schInput").value.trim(), icon:pickIcon, ci:pickCi, done:false});
+  if(state.active===null) state.active=state.tasks.length-1;
+  $("taskInput").value=""; $("schInput").value="";
+  save(); render();
+}
+$("addBtn").onclick=addTask;
+$("taskInput").addEventListener("keydown",e=>{ if(e.key==="Enter") addTask(); });
+
+function render(){
+  const P=pal();
+  const list=$("list"); list.innerHTML="";
+  if(!state.tasks.length)
+    list.innerHTML='<div class="empty">Add the work you keep postponing ↑</div>';
+  state.tasks.forEach((t,i)=>{
+    const d=document.createElement("div");
+    d.className="task"+(i===state.active?" sel":"")+(t.done?" done":"");
+    d.style.setProperty("--tc",P[t.ci]||P[0]);
+    d.innerHTML=`<span class="ic"></span>
+      <div class="info"><div class="txt"></div><div class="sch"></div></div>
+      <button class="mini" title="mark done">✓</button>
+      <button class="mini" title="delete">✕</button>`;
+    d.querySelector(".ic").textContent=t.icon;
+    d.querySelector(".txt").textContent=t.text;
+    d.querySelector(".sch").textContent=t.sch||"";
+    d.onclick=()=>{ state.active=i; save(); render(); };
+    const [ok,del]=d.querySelectorAll(".mini");
+    ok.onclick =e=>{ e.stopPropagation(); t.done=!t.done; save(); render(); };
+    del.onclick=e=>{ e.stopPropagation(); state.tasks.splice(i,1);
+      if(state.active===i)state.active=null;
+      else if(state.active>i)state.active--;
+      save(); render(); };
+    list.appendChild(d);
+  });
+  const a=state.tasks[state.active];
+  $("miniTask").querySelector(".ic").textContent = a?a.icon:"🎯";
+  $("miniTask").querySelector(".word").textContent = a?a.text.split(/\s+/)[0]:"no task";
+  $("miniTask").style.color = a?(P[a.ci]||""):"";
+  $("time").style.color = a?(P[a.ci]||""):"";
+  renderStats();
+}
+function renderStats(){
+  const p=state.tasks.filter(t=>!t.done).length;
+  $("stats").innerHTML=`<b>${state.done}</b> sessions done · ${p} pending`;
+}
+
+/* ---------- init ---------- */
+$("hrs").value=state.h; $("mins").value=state.m;
+applyTheme(); paint(); applyPin();
+</script>
+</body>
+</html>
