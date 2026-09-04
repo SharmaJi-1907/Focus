@@ -17,15 +17,28 @@ parallel, for free.
 2. **Actions** tab → **build installers** → **Run workflow**.
 3. Wait ~10 minutes. Download from the run's **Artifacts**.
 
-To cut a release with the installers attached, push a tag instead:
+### Publishing a release
+
+A manual **Run workflow** only builds — the installers land as workflow
+artifacts, which expire after 90 days and need a login to download. To publish
+a real Release with permanent download links, push a tag:
 
 ```bash
 git tag v7.0.0
 git push origin v7.0.0
 ```
 
+That triggers the same workflow, but `tagName` is set, so tauri-action creates
+the GitHub Release and attaches the `.deb`, `.AppImage`, `.msi` and `.exe`.
+Those are the files the README's download links point at, so **the links stay
+dead until a tag is pushed.**
+
+Asset filenames carry the version (`Floating.Focus_7.0.0_amd64.AppImage`), so
+the direct links in README.md need updating each release. The main download
+button points at `/releases/latest` and never needs touching.
+
 The workflow lives at
-[`floating-focus/.github/workflows/build.yml`](floating-focus/.github/workflows/build.yml)
+[`.github/workflows/build.yml`](.github/workflows/build.yml)
 and produces:
 
 | Runner | Output |
@@ -87,6 +100,8 @@ refreshes. Rust changes trigger a recompile.
 
 ```
 .
+├─ .github/workflows/build.yml      ← cloud build; GitHub only runs workflows
+│                                     from the repository root
 ├─ README.md                        ← download page for users
 ├─ BUILD-GUIDE.md                   ← this file
 └─ floating-focus/
@@ -99,7 +114,6 @@ refreshes. Rust changes trigger a recompile.
    │  ├─ build.rs
    │  ├─ capabilities/default.json  ← allowlist of native calls the UI may make
    │  └─ icons/                     ← app icon, every size
-   └─ .github/workflows/build.yml   ← cloud build for Linux + Windows
 ```
 
 ### The icon files
