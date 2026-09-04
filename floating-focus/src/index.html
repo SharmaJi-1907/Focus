@@ -79,7 +79,8 @@
   #resetBtn:hover { color:var(--ink); border-color:var(--dim); }
 
   /* ---------- expanded ---------- */
-  #full { display:none; flex:1; flex-direction:column; overflow-y:auto; padding:0 14px 14px; }
+  #full { display:none; flex:1; min-height:0; flex-direction:column; overflow-y:auto;
+          padding:0 14px 14px; }
   #full::-webkit-scrollbar { width:5px; }
   #full::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
   body.expanded #full { display:flex; }
@@ -243,6 +244,9 @@
       <button class="chipbtn" id="testSnd">▶</button>
     </div>
 
+    <div class="sect">Shortcut</div>
+    <div class="row"><span class="unit" id="hkNote">Ctrl+Alt+F — checking…</span></div>
+
     <div class="sect">New task</div>
     <div class="row">
       <input type="text" id="taskInput" placeholder="Task name…" maxlength="60" style="flex:1;min-width:120px">
@@ -314,7 +318,7 @@ function startT(){
   $("startBtn").textContent="⏸ Pause"; $("zenPlay").textContent="⏸";
   tick=setInterval(()=>{
     left=Math.max(0, Math.round((endAt-Date.now())/1000));
-    if(left<=0){ finish(); }
+    if(left<=0){ paint(); finish(); return; }
     paint();
   },250);
 }
@@ -403,13 +407,25 @@ $("longIn").onchange =e=>{ state.durs.long =Math.max(1,Math.min(90,+e.target.val
 $("autoCk").onchange =e=>{ state.auto=e.target.checked; save(); };
 
 /* ---------- native window controls ---------- */
-$("ringWrap").addEventListener("mousedown", e=>{
-  if(e.buttons===1 && win && !e.target.closest("button")) win.startDragging();
-});
-document.body.addEventListener("mousedown", e=>{
-  if(document.body.classList.contains("zen") && e.buttons===1 && win && !e.target.closest("button"))
-    win.startDragging();
-});
+/* Drag only once the pointer actually moves ~4px. A plain click therefore
+   still reaches the page, so double-click-to-start/pause works on the digits. */
+function dragHandle(el, guard){
+  el.addEventListener("mousedown", e=>{
+    if(e.button!==0 || !win) return;
+    if(e.target.closest("button")) return;
+    if(guard && !guard()) return;
+    const x0=e.clientX, y0=e.clientY;
+    const done=()=>{ document.removeEventListener("mousemove",mv);
+                     document.removeEventListener("mouseup",done); };
+    const mv=ev=>{
+      if(Math.abs(ev.clientX-x0)>4 || Math.abs(ev.clientY-y0)>4){ done(); win.startDragging(); }
+    };
+    document.addEventListener("mousemove",mv);
+    document.addEventListener("mouseup",done);
+  });
+}
+dragHandle($("ringWrap"));
+dragHandle(document.body, ()=>document.body.classList.contains("zen"));
 
 async function applyPin(){
   if(win) await win.setAlwaysOnTop(!!state.pinned);
@@ -442,17 +458,23 @@ $("zenBtn").onclick=toggleZen;
 $("zenExit").onclick=toggleZen;
 
 /* ---------- global hotkey: Ctrl+Alt+F = start/pause from any app ---------- */
+const hk = msg => { const el=$("hkNote"); if(el) el.textContent=msg; };
 (async ()=>{
+  const gs = T && T.globalShortcut;
+  if(!gs){ hk("Ctrl+Alt+F — unavailable (not running in the app)"); return; }
+  let last=0;
   try{
-    const gs = T && T.globalShortcut;
-    if(!gs) return;
-    let last=0;
     await gs.register("CommandOrControl+Alt+F", ev=>{
       if(ev && ev.state && ev.state!=="Pressed") return;
       const n=Date.now(); if(n-last<250) return; last=n;
       toggleT();
     });
-  }catch(e){}
+  }catch(e){
+    /* Wayland has no X11-style global grabs, so registration fails there. */
+    hk("Ctrl+Alt+F — blocked by the desktop (Wayland). Use the tray or window.");
+    return;
+  }
+  hk("Ctrl+Alt+F — active: start / pause from any app");
 })();
 
 /* ---------- theme ---------- */

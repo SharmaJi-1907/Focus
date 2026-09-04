@@ -17,7 +17,7 @@
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
-        "resizable": false,
+        "resizable": true,
         "x": 80,
         "y": 80
       }
