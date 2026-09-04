@@ -5,75 +5,114 @@
 <title>Floating Focus</title>
 <style>
   :root {
-    --bg:#10141c; --card:#1d2432; --line:#242c3b; --ink:#e8e6df;
+    --bg:#10141c; --bgr:16,20,28; --card:#1d2432; --line:#242c3b; --ink:#e8e6df;
     --dim:#8a93a5; --accent:#f5b942; --danger:#e0654f; --ok:#7fc78a;
     --btnink:#1a1408;
   }
   [data-theme="light"] {
-    --bg:#f6f4ee; --card:#ffffff; --line:#e0dbcd; --ink:#2e333a;
+    --bg:#f6f4ee; --bgr:246,244,238; --card:#ffffff; --line:#e0dbcd; --ink:#2e333a;
     --dim:#8b919c; --accent:#b26f0e; --danger:#c0392b; --ok:#2e7d43;
     --btnink:#ffffff;
   }
-  * { margin:0; padding:0; box-sizing:border-box; user-select:none;
-      -webkit-user-select:none; }
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
+  html { background:transparent; }
   html,body { height:100%; }
-  body { background:var(--bg); color:var(--ink);
+  body { background:rgba(var(--bgr),1); color:var(--ink);
          font-family:"Segoe UI","Noto Sans",system-ui,sans-serif;
          overflow:hidden; display:flex; flex-direction:column;
-         transition:background .3s; }
+         transition:background .3s; border-radius:18px;
+         border:1px solid rgba(255,255,255,.05); }
 
   /* ---------- top bar (native drag region) ---------- */
-  .bar { display:flex; align-items:center; padding:8px 10px 2px; gap:3px; }
+  .bar { display:flex; align-items:center; padding:8px 8px 2px 12px; gap:2px; }
   .brand { flex:1; font-size:10px; letter-spacing:.16em; text-transform:uppercase;
-           color:var(--dim); cursor:move; }
-  .wbtn { border:none; background:transparent; color:var(--dim); width:28px;
-          height:24px; border-radius:7px; cursor:pointer; font-size:13px;
+           color:var(--dim); cursor:move; display:flex; align-items:center; gap:6px; }
+  #runDot { width:6px; height:6px; border-radius:50%; background:var(--line); transition:.3s; }
+  body.running #runDot { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+  .wbtn { border:none; background:transparent; color:var(--dim); width:26px;
+          height:24px; border-radius:7px; cursor:pointer; font-size:12px;
           display:grid; place-items:center; transition:.15s; }
   .wbtn:hover { background:var(--line); color:var(--ink); }
   .wbtn.close:hover { background:var(--danger); color:#fff; }
   #pinBtn.on { color:var(--accent); background:var(--line); }
 
-  #miniTask { display:flex; justify-content:center; align-items:center; gap:7px;
-              padding:2px 12px 0; font-size:13px; color:var(--dim); min-height:22px; }
-  #miniTask .ic { font-size:16px; }
-  #miniTask .word { font-weight:600; }
+  /* ---------- mode pills + cycle dots ---------- */
+  .pills { display:flex; align-items:center; justify-content:center; gap:10px; padding:4px 12px 0; }
+  .seg { display:flex; background:var(--card); border:1px solid var(--line);
+         border-radius:20px; padding:2px; }
+  .seg button { border:none; background:transparent; color:var(--dim); font-size:10.5px;
+                font-weight:700; padding:4px 10px; border-radius:16px; cursor:pointer;
+                letter-spacing:.04em; transition:.15s; }
+  .seg button.on { background:var(--accent); color:var(--btnink); }
+  .dots { display:flex; gap:4px; }
+  .dots i { width:6px; height:6px; border-radius:50%; background:var(--line);
+            display:inline-block; transition:.3s; }
+  .dots i.f { background:var(--accent); }
 
-  #time { text-align:center; font-size:50px; font-weight:700; line-height:1.1;
-          font-variant-numeric:tabular-nums; color:var(--accent);
-          transition:color .3s; padding-top:2px; cursor:move; }
+  /* ---------- progress ring + clock ---------- */
+  #ringWrap { position:relative; width:196px; height:196px; margin:8px auto 0; cursor:move; }
+  #ring { width:100%; height:100%; transform:rotate(-90deg); }
+  #ring .track { fill:none; stroke:var(--card); stroke-width:8; }
+  #prog { fill:none; stroke:url(#g); stroke-width:8; stroke-linecap:round;
+          stroke-dasharray:565.49; stroke-dashoffset:0; transition:stroke-dashoffset .25s linear; }
+  #ringIn { position:absolute; inset:0; display:flex; flex-direction:column;
+            justify-content:center; align-items:center; gap:2px; }
+  #time { font-size:31px; font-weight:700; font-variant-numeric:tabular-nums;
+          color:var(--ink); transition:color .3s; line-height:1; }
   #time.flash { animation:flash .5s steps(1) infinite; }
   @keyframes flash { 50% { color:var(--ok); } }
   @media (prefers-reduced-motion: reduce){ #time.flash{ animation:none; color:var(--ok);} }
+  #modeLbl { font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim); }
+  #miniTask { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim);
+              max-width:150px; overflow:hidden; }
+  #miniTask .word { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  .ctrl { display:flex; justify-content:center; gap:10px; padding:10px 12px 12px; }
-  .big { border:none; border-radius:12px; padding:12px 0; font-size:15px;
-         font-weight:700; cursor:pointer; transition:.15s; flex:1; max-width:130px; }
+  /* ---------- big controls ---------- */
+  .ctrl { display:flex; justify-content:center; gap:10px; padding:10px 14px 14px; }
+  .big { border:none; border-radius:13px; padding:11px 0; font-size:14px;
+         font-weight:700; cursor:pointer; transition:.15s; flex:1; max-width:126px; }
   .big:active { transform:scale(.96); }
-  #startBtn { background:var(--accent); color:var(--btnink); }
+  #startBtn { background:var(--accent); color:var(--btnink);
+              box-shadow:0 4px 14px -6px var(--accent); }
   #startBtn:hover { filter:brightness(1.08); }
-  #resetBtn { background:transparent; color:var(--dim);
-              border:1.5px solid var(--line); }
+  #resetBtn { background:transparent; color:var(--dim); border:1.5px solid var(--line); }
   #resetBtn:hover { color:var(--ink); border-color:var(--dim); }
 
   /* ---------- expanded ---------- */
-  #full { display:none; flex:1; flex-direction:column; overflow:hidden;
-          padding:0 12px 12px; }
+  #full { display:none; flex:1; flex-direction:column; overflow-y:auto; padding:0 14px 14px; }
+  #full::-webkit-scrollbar { width:5px; }
+  #full::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
   body.expanded #full { display:flex; }
   .sect { font-size:10px; letter-spacing:.14em; text-transform:uppercase;
-          color:var(--dim); margin:6px 0 6px; }
+          color:var(--dim); margin:10px 0 6px; }
   .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
   input[type=text],input[type=number] {
     background:var(--card); border:1px solid var(--line); border-radius:8px;
     color:var(--ink); padding:8px 10px; font-size:13px; outline:none;
     transition:.15s; user-select:text; -webkit-user-select:text; }
   input:focus { border-color:var(--accent); }
-  input[type=number] { width:60px; text-align:center; }
+  input[type=number] { width:54px; text-align:center; }
   .unit { font-size:11px; color:var(--dim); }
   .chipbtn { background:var(--card); border:1px solid var(--line); color:var(--ink);
              border-radius:8px; padding:8px 14px; font-size:12px; font-weight:600;
              cursor:pointer; transition:.15s; }
   .chipbtn:hover { border-color:var(--accent); }
+  .chipbtn.on { border-color:var(--accent); color:var(--accent); }
+  input[type=range] { -webkit-appearance:none; width:90px; height:4px; border-radius:2px;
+                      background:var(--line); outline:none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px;
+                      border-radius:50%; background:var(--accent); cursor:pointer; }
+  label.ck { font-size:12px; color:var(--dim); display:flex; align-items:center; gap:5px; cursor:pointer; }
 
+  /* today panel */
+  #today { background:var(--card); border:1px solid var(--line); border-radius:11px;
+           padding:9px 11px; font-size:12px; }
+  .todayTop { color:var(--ink); padding-bottom:2px; }
+  .todayTop b { color:var(--ok); }
+  .todayRow { display:flex; justify-content:space-between; color:var(--dim); padding-top:3px; }
+  .todayRow b { color:var(--ink); font-weight:600; }
+
+  /* pickers */
   .picker { display:flex; gap:4px; flex-wrap:wrap; margin:6px 0; }
   .ic-opt { width:30px; height:30px; border-radius:8px; border:1px solid var(--line);
             background:var(--card); font-size:15px; cursor:pointer;
@@ -85,9 +124,8 @@
   .c-opt:hover { transform:scale(1.15); }
   .c-opt.on { border-color:var(--ink); }
 
-  #list { flex:1; overflow-y:auto; margin-top:4px; }
-  #list::-webkit-scrollbar { width:5px; }
-  #list::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
+  /* task cards */
+  #list { margin-top:4px; }
   .task { display:flex; align-items:center; gap:9px; background:var(--card);
           border:1px solid var(--line); border-left:5px solid var(--tc);
           border-radius:11px; padding:9px 10px; margin-bottom:7px; cursor:pointer;
@@ -97,8 +135,7 @@
   .task.sel { border-color:var(--tc); box-shadow:0 0 0 1px var(--tc); }
   .task .ic { font-size:17px; }
   .task .info { flex:1; overflow:hidden; }
-  .task .txt { font-size:13px; overflow:hidden; text-overflow:ellipsis;
-               white-space:nowrap; }
+  .task .txt { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .task .sch { font-size:10px; color:var(--dim); }
   .task.done .txt { text-decoration:line-through; color:var(--dim); }
   .mini { border:none; background:transparent; color:var(--dim); cursor:pointer;
@@ -106,37 +143,104 @@
   .mini:hover { background:var(--line); color:var(--ink); }
   .empty { text-align:center; color:var(--dim); font-size:12px; padding:14px 8px;
            border:1px dashed var(--line); border-radius:10px; }
-  .stats { font-size:11px; color:var(--dim); text-align:center; padding-top:6px; }
+  .stats { font-size:11px; color:var(--dim); text-align:center; padding-top:8px; }
   .stats b { color:var(--ok); }
+
+  /* ---------- ZEN MODE: tiny translucent overlay ---------- */
+  body.zen { background:rgba(var(--bgr), var(--zop,.6)); border-radius:14px; }
+  body.zen:hover { background:rgba(var(--bgr), .95); }
+  body.zen .bar, body.zen .pills, body.zen .ctrl, body.zen #full,
+  body.zen #ring, body.zen #miniTask { display:none; }
+  body.zen #ringWrap { width:100%; height:auto; margin:0; padding:16px 10px 8px; }
+  body.zen #time { font-size:36px; }
+  body.zen #modeLbl { display:block; }
+  #zenBar { display:none; height:4px; margin:8px 16px 0; border-radius:2px;
+            background:var(--line); overflow:hidden; }
+  #zenBar i { display:block; height:100%; width:0%; background:var(--accent);
+              border-radius:2px; transition:width .25s linear; }
+  body.zen #zenBar { display:block; }
+  #zenTools { display:none; position:fixed; top:5px; right:6px; gap:2px; opacity:0; transition:.2s; }
+  body.zen #zenTools { display:flex; }
+  body.zen:hover #zenTools { opacity:1; }
 </style>
 </head>
 <body>
 
-  <!-- top bar: 📌 pin · ☾ theme · — minimize · ⤢ expand · ✕ close -->
+  <!-- top bar: zen · pin · theme · minimize · expand · hide-to-tray -->
   <div class="bar" data-tauri-drag-region>
-    <span class="brand" data-tauri-drag-region>⋮⋮ focus</span>
-    <button class="wbtn on" id="pinBtn"  title="pin on top of every app">📌</button>
+    <span class="brand" data-tauri-drag-region><i id="runDot"></i>focus</span>
+    <button class="wbtn" id="zenBtn"  title="zen mode — tiny translucent timer">◐</button>
+    <button class="wbtn on" id="pinBtn" title="pin on top of every app">📌</button>
     <button class="wbtn" id="themeBtn" title="day / night">☾</button>
     <button class="wbtn" id="minBtn"   title="minimize">—</button>
     <button class="wbtn" id="expBtn"   title="expand">⤢</button>
-    <button class="wbtn close" id="closeBtn" title="close">✕</button>
+    <button class="wbtn close" id="closeBtn" title="hide — keeps running in tray">✕</button>
   </div>
 
-  <div id="miniTask"><span class="ic">🎯</span><span class="word">no task</span></div>
+  <!-- mode pills + pomodoro cycle dots -->
+  <div class="pills">
+    <div class="seg">
+      <button data-mode="focus" class="on">Focus</button><button data-mode="short">Break</button><button data-mode="long">Long</button>
+    </div>
+    <div class="dots"><i></i><i></i><i></i><i></i></div>
+  </div>
 
-  <div id="time" title="drag to move · double-click to start/pause">00:25:00</div>
+  <!-- progress ring + clock -->
+  <div id="ringWrap" title="drag to move · double-click time to start/pause">
+    <svg id="ring" viewBox="0 0 200 200">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"  style="stop-color:var(--accent)"/>
+          <stop offset="100%" style="stop-color:var(--ok)"/>
+        </linearGradient>
+      </defs>
+      <circle class="track" cx="100" cy="100" r="90"/>
+      <circle id="prog" cx="100" cy="100" r="90"/>
+    </svg>
+    <div id="ringIn">
+      <div id="time">00:25:00</div>
+      <div id="modeLbl">focus</div>
+      <div id="miniTask"><span class="ic">🎯</span><span class="word">no task</span></div>
+    </div>
+    <div id="zenBar"><i></i></div>
+  </div>
+
+  <div id="zenTools">
+    <button class="wbtn" id="zenPlay" title="start / pause">▶</button>
+    <button class="wbtn" id="zenExit" title="exit zen">⤢</button>
+  </div>
 
   <div class="ctrl">
     <button class="big" id="startBtn">▶ Start</button>
     <button class="big" id="resetBtn">↺ Reset</button>
   </div>
 
+  <!-- ================= expanded ================= -->
   <div id="full">
-    <div class="sect">Set time</div>
+    <div class="sect">Today</div>
+    <div id="today"></div>
+
+    <div class="sect">Focus length</div>
     <div class="row">
       <input type="number" id="hrs" min="0" max="24" value="0"><span class="unit">hr</span>
       <input type="number" id="mins" min="0" max="59" value="25"><span class="unit">min</span>
-      <button class="chipbtn" id="setBtn">Set timer</button>
+      <button class="chipbtn" id="setBtn">Set</button>
+    </div>
+
+    <div class="sect">Breaks &amp; rhythm</div>
+    <div class="row">
+      <input type="number" id="shortIn" min="1" max="60" value="5"><span class="unit">short</span>
+      <input type="number" id="longIn" min="1" max="90" value="15"><span class="unit">long</span>
+      <label class="ck"><input type="checkbox" id="autoCk"> auto-start next</label>
+    </div>
+
+    <div class="sect">Sound</div>
+    <div class="row">
+      <button class="chipbtn snd" data-s="chime">Chime</button>
+      <button class="chipbtn snd" data-s="bell">Bell</button>
+      <button class="chipbtn snd" data-s="beep">Beep</button>
+      <input type="range" id="volIn" min="0" max="100">
+      <button class="chipbtn" id="testSnd">▶</button>
     </div>
 
     <div class="sect">New task</div>
@@ -160,40 +264,68 @@
 const ICONS = ["🎯","📚","💻","✍️","🧠","🏋️","📝","⚡","🎨","🔬","📊","🎸"];
 const PAL_DARK  = ["#f5b942","#7fc78a","#6aa9f0","#e0654f","#c78af0","#3aa8a0"];
 const PAL_LIGHT = ["#b26f0e","#2e7d43","#2563b8","#c0392b","#7a3fb8","#1f7a73"];
-const MINI=[300,285], EXPANDED=[350,640];
+const MINI=[300,344], EXPANDED=[352,700], ZEN=[236,124];
+const CIRC = 565.49;
 const $ = id => document.getElementById(id);
 const pal = () => state.theme==="light" ? PAL_LIGHT : PAL_DARK;
+const todayStr = () => new Date().toLocaleDateString("en-CA");
 
-/* ---------- Tauri window handle (falls back gracefully in a browser) ---------- */
+/* ---------- Tauri handles (safe in a plain browser too) ---------- */
 const T = window.__TAURI__ || null;
 const win = T ? T.window.getCurrentWindow() : null;
 
-/* ---------- state (saved locally, survives restarts) ---------- */
-let state = { tasks:[], active:null, h:0, m:25, theme:"dark", done:0, pinned:true };
+/* ---------- state ---------- */
+let state = { tasks:[], active:null, h:0, m:25, theme:"dark", done:0, pinned:true,
+              durs:{short:5,long:15}, auto:true, snd:"chime", vol:60, cycle:0, log:[] };
 try { const s=localStorage.getItem("ff6"); if(s) state={...state,...JSON.parse(s)}; } catch(e){}
+if(!state.durs) state.durs={short:5,long:15};
+if(!Array.isArray(state.log)) state.log=[];
 state.tasks.forEach(t=>{ if(t.ci===undefined){ const i=PAL_DARK.indexOf(t.color); t.ci=i>=0?i:0; } });
 const save = () => { try{ localStorage.setItem("ff6", JSON.stringify(state)); }catch(e){} };
 
-/* ---------- drift-free timer ----------
-   The countdown is computed from an absolute end-timestamp instead of
-   decrementing a counter, so it never lags or drifts. */
-let total=state.h*3600+state.m*60, left=total, running=false, endAt=0, tick=null;
-const fmt=s=>[s/3600|0, s/60%60|0, s%60].map(n=>String(n).padStart(2,"0")).join(":");
-const paint=()=>{ $("time").textContent=fmt(left); };
+/* ---------- pomodoro modes ---------- */
+let mode="focus";
+const modeSecs = m => m==="focus" ? Math.max(60, state.h*3600+state.m*60)
+                                  : (m==="short"?state.durs.short:state.durs.long)*60;
+let total=modeSecs(mode), left=total, running=false, endAt=0, tick=null;
 
+function paintPills(){
+  document.querySelectorAll(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+  $("modeLbl").textContent = mode==="focus"?"focus":(mode==="short"?"short break":"long break");
+  const f=state.cycle%4;
+  document.querySelectorAll(".dots i").forEach((d,i)=>d.classList.toggle("f",i<f));
+}
+function switchMode(m){ mode=m; total=modeSecs(m); resetT(); paintPills(); }
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>switchMode(b.dataset.mode));
+
+/* ---------- drift-free timer + ring ---------- */
+const fmt=s=>[s/3600|0, s/60%60|0, s%60].map(n=>String(n).padStart(2,"0")).join(":");
+function paint(){
+  $("time").textContent=fmt(left);
+  const p = total? left/total : 0;
+  $("prog").style.strokeDashoffset = CIRC*(1-p);
+  $("zenBar").firstElementChild.style.width = ((1-p)*100)+"%";
+}
 function startT(){
   if(running || left<=0) return;
   running=true; endAt=Date.now()+left*1000;
+  document.body.classList.add("running");
   $("time").classList.remove("flash");
-  $("startBtn").textContent="⏸ Pause";
+  $("startBtn").textContent="⏸ Pause"; $("zenPlay").textContent="⏸";
   tick=setInterval(()=>{
     left=Math.max(0, Math.round((endAt-Date.now())/1000));
-    if(left<=0){ stopT(); finish(); }
+    if(left<=0){ finish(); }
     paint();
   },250);
 }
-function stopT(){ running=false; clearInterval(tick); $("startBtn").textContent="▶ Start"; }
+function stopT(){
+  running=false; clearInterval(tick);
+  document.body.classList.remove("running");
+  $("startBtn").textContent="▶ Start"; $("zenPlay").textContent="▶";
+}
 function resetT(){ stopT(); $("time").classList.remove("flash"); left=total; paint(); }
+const toggleT=()=>running?stopT():startT();
+
 function clampSet(){
   let h=Math.max(0,Math.min(24, +$("hrs").value|0));
   let m=Math.max(0,Math.min(59, +$("mins").value|0));
@@ -201,51 +333,127 @@ function clampSet(){
   if(h===24) m=0;
   state.h=h; state.m=m; save();
   $("hrs").value=h; $("mins").value=m;
-  total=h*3600+m*60; resetT();
+  if(mode==="focus"){ total=modeSecs("focus"); resetT(); }
 }
+
+/* ---------- finish: log the session, advance the cycle ---------- */
 function finish(){
-  $("time").classList.add("flash"); $("time").textContent="DONE!";
-  state.done++; save(); renderStats();
-  try{ const c=new (window.AudioContext||window.webkitAudioContext)();
-    [0,.4,.8].forEach(t=>{ const o=c.createOscillator(),g=c.createGain();
-      o.connect(g); g.connect(c.destination); o.frequency.value=740; g.gain.value=.06;
-      o.start(c.currentTime+t); o.stop(c.currentTime+t+.25); }); }catch(e){}
+  stopT(); playSound();
+  let next="focus";
+  if(mode==="focus"){
+    const minsDone=Math.max(1,Math.round(modeSecs("focus")/60));
+    const a=state.tasks[state.active];
+    state.log.push({d:todayStr(), t:a?a.text:null, ic:a?a.icon:"🎯", min:minsDone});
+    if(state.log.length>2000) state.log=state.log.slice(-2000);
+    state.done++; state.cycle++;
+    next = (state.cycle%4===0) ? "long" : "short";
+  } else {
+    if(mode==="long") state.cycle=0;
+  }
+  save(); renderStats(); renderToday(); paintPills();
+  $("time").classList.add("flash"); $("time").textContent="DONE";
+  setTimeout(()=>{
+    $("time").classList.remove("flash");
+    switchMode(next);
+    if(state.auto) startT();
+  },1800);
 }
-$("startBtn").onclick=()=>running?stopT():startT();
-$("time").addEventListener("dblclick",()=>running?stopT():startT());
+
+$("startBtn").onclick=toggleT;
+$("zenPlay").onclick=toggleT;
+$("time").addEventListener("dblclick",toggleT);
 $("resetBtn").onclick=resetT;
 $("setBtn").onclick=clampSet;
 ["hrs","mins"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") clampSet(); }));
 
+/* ---------- sounds ---------- */
+function tone(c,type,f,t0,dur,g0){
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type; o.frequency.value=f; o.connect(g); g.connect(c.destination);
+  const v=Math.max(0.0001,(state.vol/100)*0.25*g0);
+  g.gain.setValueAtTime(0.0001,c.currentTime+t0);
+  g.gain.exponentialRampToValueAtTime(v,c.currentTime+t0+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+t0+dur);
+  o.start(c.currentTime+t0); o.stop(c.currentTime+t0+dur+0.05);
+}
+function playSound(){
+  if(state.vol<=0) return;
+  try{
+    const c=new (window.AudioContext||window.webkitAudioContext)();
+    if(state.snd==="bell"){ tone(c,"sine",660,0,1.4,1); tone(c,"sine",1320,0,0.9,0.4); }
+    else if(state.snd==="beep"){ [0,.3,.6].forEach(t=>tone(c,"square",520,t,0.18,0.7)); }
+    else { tone(c,"sine",880,0,.6,1); tone(c,"sine",1108.7,.22,.6,1); tone(c,"sine",1318.5,.44,.9,1); }
+  }catch(e){}
+}
+function paintSound(){
+  document.querySelectorAll(".snd").forEach(b=>b.classList.toggle("on",b.dataset.s===state.snd));
+  $("volIn").value=state.vol;
+}
+document.querySelectorAll(".snd").forEach(b=>b.onclick=()=>{ state.snd=b.dataset.s; save(); paintSound(); playSound(); });
+$("volIn").oninput=e=>{ state.vol=+e.target.value; save(); };
+$("testSnd").onclick=playSound;
+
+/* ---------- breaks & rhythm settings ---------- */
+function paintRhythm(){
+  $("shortIn").value=state.durs.short; $("longIn").value=state.durs.long;
+  $("autoCk").checked=!!state.auto;
+}
+$("shortIn").onchange=e=>{ state.durs.short=Math.max(1,Math.min(60,+e.target.value|0)); save(); paintRhythm(); if(mode==="short")switchMode("short"); };
+$("longIn").onchange =e=>{ state.durs.long =Math.max(1,Math.min(90,+e.target.value|0)); save(); paintRhythm(); if(mode==="long")switchMode("long"); };
+$("autoCk").onchange =e=>{ state.auto=e.target.checked; save(); };
+
 /* ---------- native window controls ---------- */
-/* Drag: the top bar uses data-tauri-drag-region (handled by the OS).
-   The big digits also start a native drag on mousedown. */
-$("time").addEventListener("mousedown", e=>{
-  if(e.buttons===1 && win) win.startDragging();
+$("ringWrap").addEventListener("mousedown", e=>{
+  if(e.buttons===1 && win && !e.target.closest("button")) win.startDragging();
+});
+document.body.addEventListener("mousedown", e=>{
+  if(document.body.classList.contains("zen") && e.buttons===1 && win && !e.target.closest("button"))
+    win.startDragging();
 });
 
-/* Pin: toggle always-on-top. On = hovers above every application. */
 async function applyPin(){
   if(win) await win.setAlwaysOnTop(!!state.pinned);
   $("pinBtn").classList.toggle("on", !!state.pinned);
-  $("pinBtn").title = state.pinned ? "pinned on top — click to unpin"
-                                   : "click to pin on top of every app";
+  $("pinBtn").title = state.pinned ? "pinned on top — click to unpin" : "click to pin on top of every app";
 }
 $("pinBtn").onclick=()=>{ state.pinned=!state.pinned; save(); applyPin(); };
 
-$("closeBtn").onclick=()=> win ? win.close() : window.close();
+/* ✕ hides to tray (the app keeps running) — quit from the tray menu */
+$("closeBtn").onclick=()=> win ? win.hide() : window.close();
 $("minBtn").onclick  =()=> win && win.minimize();
 
-let expanded=false;
+const setWinSize = async (w,h)=>{ if(win) await win.setSize(new T.dpi.LogicalSize(w,h)); };
+
+let expanded=false, zen=false;
 $("expBtn").onclick=async ()=>{
+  if(zen) return;
   expanded=!expanded;
   document.body.classList.toggle("expanded",expanded);
   $("expBtn").textContent=expanded?"⤡":"⤢";
-  if(win){
-    const [w,h]=expanded?EXPANDED:MINI;
-    await win.setSize(new T.dpi.LogicalSize(w,h));
-  }
+  const [w,h]=expanded?EXPANDED:MINI; await setWinSize(w,h);
 };
+async function toggleZen(){
+  zen=!zen;
+  if(zen && expanded){ expanded=false; document.body.classList.remove("expanded"); $("expBtn").textContent="⤢"; }
+  document.body.classList.toggle("zen",zen);
+  const [w,h]=zen?ZEN:MINI; await setWinSize(w,h);
+}
+$("zenBtn").onclick=toggleZen;
+$("zenExit").onclick=toggleZen;
+
+/* ---------- global hotkey: Ctrl+Alt+F = start/pause from any app ---------- */
+(async ()=>{
+  try{
+    const gs = T && T.globalShortcut;
+    if(!gs) return;
+    let last=0;
+    await gs.register("CommandOrControl+Alt+F", ev=>{
+      if(ev && ev.state && ev.state!=="Pressed") return;
+      const n=Date.now(); if(n-last<250) return; last=n;
+      toggleT();
+    });
+  }catch(e){}
+})();
 
 /* ---------- theme ---------- */
 function applyTheme(){
@@ -314,17 +522,40 @@ function render(){
   $("miniTask").querySelector(".ic").textContent = a?a.icon:"🎯";
   $("miniTask").querySelector(".word").textContent = a?a.text.split(/\s+/)[0]:"no task";
   $("miniTask").style.color = a?(P[a.ci]||""):"";
-  $("time").style.color = a?(P[a.ci]||""):"";
   renderStats();
+}
+
+/* ---------- today / streak ---------- */
+function streak(){
+  const days=new Set(state.log.map(e=>e.d));
+  let s=0; const d=new Date();
+  if(!days.has(d.toLocaleDateString("en-CA"))) d.setDate(d.getDate()-1);
+  while(days.has(d.toLocaleDateString("en-CA"))){ s++; d.setDate(d.getDate()-1); }
+  return s;
+}
+function renderToday(){
+  const t=todayStr();
+  const es=state.log.filter(e=>e.d===t);
+  const tot=es.reduce((s,e)=>s+e.min,0);
+  const by={};
+  es.forEach(e=>{ const k=(e.ic||"🎯")+" "+(e.t||"(no task)"); by[k]=(by[k]||0)+e.min; });
+  const el=$("today");
+  el.innerHTML=`<div class="todayTop"><b>${tot}</b> min focused · 🔥 <b>${streak()}</b> day streak</div>`;
+  Object.entries(by).forEach(([k,v])=>{
+    const r=document.createElement("div"); r.className="todayRow";
+    const s=document.createElement("span"); s.textContent=k;
+    const b=document.createElement("b"); b.textContent=v+"m";
+    r.append(s,b); el.appendChild(r);
+  });
 }
 function renderStats(){
   const p=state.tasks.filter(t=>!t.done).length;
-  $("stats").innerHTML=`<b>${state.done}</b> sessions done · ${p} pending`;
+  $("stats").innerHTML=`<b>${state.done}</b> sessions all-time · ${p} pending`;
 }
 
 /* ---------- init ---------- */
 $("hrs").value=state.h; $("mins").value=state.m;
-applyTheme(); paint(); applyPin();
+applyTheme(); paintPills(); paintSound(); paintRhythm(); renderToday(); paint(); applyPin();
 </script>
 </body>
 </html>
