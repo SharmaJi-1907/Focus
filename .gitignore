@@ -1,0 +1,34 @@
+# ---- Build output -------------------------------------------------
+# Rust/Tauri compile artifacts and generated schemas.
+floating-focus/src-tauri/target/
+floating-focus/src-tauri/gen/
+
+# ---- Downloaded installers ----------------------------------------
+# Release artifacts pulled down from GitHub Actions. They are rebuilt
+# by the workflow on demand and must never be committed — the v6
+# AppImage alone is 76 MB.
+floating-focus-ubuntu-22.04/
+floating-focus-ubuntu-22.04.zip
+floating-focus-windows-latest.zip
+*.AppImage
+*.deb
+*.msi
+*.exe
+
+# ---- Source snapshots ---------------------------------------------
+# Hand-made zips of the source tree from before this repo had history.
+# Git is the source of truth now.
+floating-focus.zip
+floating-focus-v7.zip
+
+# ---- Pre-Tauri prototypes -----------------------------------------
+# The PyQt/HTML experiments (v1-v5) that led to this app. Kept on disk
+# for reference, deliberately out of the repo. NOTE: these exist here
+# and nowhere else - back them up before deleting the folder.
+old/
+
+# ---- Editor / OS noise --------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store

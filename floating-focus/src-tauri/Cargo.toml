@@ -1,6 +1,6 @@
 [package]
 name = "floating-focus"
-version = "6.0.0"
+version = "7.0.0"
 description = "Tiny always-on-top focus timer"
 edition = "2021"
 
@@ -8,7 +8,9 @@ edition = "2021"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2"
 
 [profile.release]
 opt-level = "s"
