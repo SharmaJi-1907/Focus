@@ -83,6 +83,43 @@ refreshes. Rust changes trigger a recompile.
 
 ---
 
+## Project layout
+
+```
+.
+├─ README.md                        ← download page for users
+├─ BUILD-GUIDE.md                   ← this file
+└─ floating-focus/
+   ├─ src/
+   │  └─ index.html                 ← the entire UI: HTML + CSS + JS, one file
+   ├─ src-tauri/
+   │  ├─ tauri.conf.json            ← window size, frameless, always-on-top
+   │  ├─ src/main.rs                ← native shell: tray, hotkeys, window state
+   │  ├─ Cargo.toml                 ← Rust dependencies
+   │  ├─ build.rs
+   │  ├─ capabilities/default.json  ← allowlist of native calls the UI may make
+   │  └─ icons/                     ← app icon, every size
+   └─ .github/workflows/build.yml   ← cloud build for Linux + Windows
+```
+
+### The icon files
+
+`floating-focus/src-tauri/icons/` holds every size, and all of them are listed
+in the `bundle.icon` array in `tauri.conf.json`:
+
+| File | Used for |
+|---|---|
+| `32x32.png` | Small window and tray sizes |
+| `128x128.png` | Standard app icon |
+| `128x128@2x.png` | HiDPI / Retina displays |
+| `icon.png` | Master source, largest size |
+| `icon.ico` | Windows (`.msi`, Start menu, taskbar) |
+
+The system tray reuses the default window icon at runtime, so it needs no
+separate file.
+
+---
+
 ## Editing the app
 
 Almost everything is in one file.
